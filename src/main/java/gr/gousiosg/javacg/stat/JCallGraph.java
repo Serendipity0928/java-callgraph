@@ -48,6 +48,8 @@ public class JCallGraph {
 
     public static void main(String[] args) {
 
+        System.out.println("Starting...");
+
         Function<ClassParser, ClassVisitor> getClassVisitor =
                 (ClassParser cp) -> {
                     try {
