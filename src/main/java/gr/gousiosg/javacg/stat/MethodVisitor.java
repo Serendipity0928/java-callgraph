@@ -38,16 +38,17 @@ import java.util.List;
 /**
  * The simplest of method visitors, prints any invoked method
  * signature for all method invocations.
+ * 最简单的方法访问器，用于打印所有被调用的方法签名
  * 
  * Class copied with modifications from CJKM: http://www.spinellis.gr/sw/ckjm/
  */
 public class MethodVisitor extends EmptyVisitor {
 
-    JavaClass visitedClass;
-    private MethodGen mg;
-    private ConstantPoolGen cp;
-    private String format;
-    private List<String> methodCalls = new ArrayList<>();
+    JavaClass visitedClass;         // 当前类信息
+    private MethodGen mg;           // 构建的动态方法
+    private ConstantPoolGen cp;     // 构建的动态常量池，和类的动态常量池相同
+    private String format;          // 方法格式化字符串输出
+    private List<String> methodCalls = new ArrayList<>();   // 当前方法调用其他方法集合
 
     public MethodVisitor(MethodGen m, JavaClass jc) {
         visitedClass = jc;
@@ -57,6 +58,9 @@ public class MethodVisitor extends EmptyVisitor {
             + " " + "(%s)%s:%s(%s)";
     }
 
+    /**
+     * 方法参数列表
+     */
     private String argumentList(Type[] arguments) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < arguments.length; i++) {
@@ -69,13 +73,15 @@ public class MethodVisitor extends EmptyVisitor {
     }
 
     public List<String> start() {
+        // 抽象方法或native方法没有方法体，直接返回空集合
         if (mg.isAbstract() || mg.isNative())
             return Collections.emptyList();
 
         for (InstructionHandle ih = mg.getInstructionList().getStart(); 
                 ih != null; ih = ih.getNext()) {
             Instruction i = ih.getInstruction();
-            
+
+            // 找到不属于InstructionConst || 属于ConstantPushInstruction || 属于ReturnInstruction的指令集
             if (!visitInstruction(i))
                 i.accept(this);
         }
@@ -85,7 +91,7 @@ public class MethodVisitor extends EmptyVisitor {
     private boolean visitInstruction(Instruction i) {
         short opcode = i.getOpcode();
         return ((InstructionConst.getInstruction(opcode) != null)
-                && !(i instanceof ConstantPushInstruction) 
+                && !(i instanceof ConstantPushInstruction)
                 && !(i instanceof ReturnInstruction));
     }
 

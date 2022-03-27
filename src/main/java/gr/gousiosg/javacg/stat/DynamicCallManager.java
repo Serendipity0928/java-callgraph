@@ -71,7 +71,7 @@ public class DynamicCallManager {
      */
     public void retrieveCalls(Method method, JavaClass jc) {
         if (method.isAbstract() || method.isNative()) {
-            // No code to consider
+            // 抽象方法或本地方法没有方法体，直接返回
             return;
         }
         ConstantPool cp = method.getConstantPool();
@@ -115,6 +115,10 @@ public class DynamicCallManager {
     }
 
     private BootstrapMethod[] getBootstrapMethods(JavaClass jc) {
+        /**
+         * 获取类文件属性的invokedynamic指令引用引导方法限定符。
+         * 文档：https://blog.csdn.net/ITermeng/article/details/75314972
+         */
         for (Attribute attribute : jc.getAttributes()) {
             if (attribute instanceof BootstrapMethods) {
                 return ((BootstrapMethods) attribute).getBootstrapMethods();

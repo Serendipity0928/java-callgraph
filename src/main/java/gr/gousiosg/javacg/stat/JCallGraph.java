@@ -50,6 +50,7 @@ public class JCallGraph {
 
         System.out.println("Starting...");
 
+        // 将ClassParser包装类解析的JavaClass类结升级为类访问器ClassVisitor
         Function<ClassParser, ClassVisitor> getClassVisitor =
                 (ClassParser cp) -> {
                     try {
@@ -69,7 +70,30 @@ public class JCallGraph {
                 }
 
                 try (JarFile jar = new JarFile(f)) {
+                    // 将从jar中产生的文件迭代器转换为stream流
                     Stream<JarEntry> entries = enumerationAsStream(jar.entries());
+
+                    // 为方便debug，先转换为List，后续删除
+                    List<JarEntry> jarEntryList = Collections.list(jar.entries());
+                    for (JarEntry jarEntry : jarEntryList) {
+                        if(jarEntry.isDirectory() || !jarEntry.getName().endsWith(".class")) {
+                            // 对于jar的文件夹、文件名不以".class"结尾的文件过滤。如META_INF文件(jar描述文件)
+                            continue;
+                        }
+
+                        // class文件的包装类。做了什么事情？
+                        ClassParser cp = new ClassParser(arg, jarEntry.getName());
+                        // 将class解析类JavaClass转换为类监听器
+                        ClassVisitor cv = getClassVisitor.apply(cp);
+                        // 类访问器 开始初始化
+                        cv.start();
+                        System.out.println(cv.methodCalls());
+
+
+
+                    }
+
+
 
                     String methodCalls = entries.
                             flatMap(e -> {

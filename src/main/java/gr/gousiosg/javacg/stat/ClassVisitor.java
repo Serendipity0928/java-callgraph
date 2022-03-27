@@ -42,14 +42,18 @@ import java.util.List;
 /**
  * The simplest of class visitors, invokes the method visitor class for each
  * method found.
+ * 最简单的类访问器，用于为每个发现的方法调用方法访问器。
+ * 该类继承自EmptyVisitor，这个是由BCEL提供的空方法体的访问器主类，其实现Visitor接口。---访问器模式
+ * EmptyVisitor文档地址：https://commons.apache.org/proper/commons-bcel/apidocs/index.html
+ * Visitor文档地址：https://commons.apache.org/proper/commons-bcel/apidocs/index.html
  */
 public class ClassVisitor extends EmptyVisitor {
 
-    private JavaClass clazz;
-    private ConstantPoolGen constants;
-    private String classReferenceFormat;
-    private final DynamicCallManager DCManager = new DynamicCallManager();
-    private List<String> methodCalls = new ArrayList<>();
+    private JavaClass clazz;                    // class文件解析类
+    private ConstantPoolGen constants;          // 构建动态类常量池
+    private String classReferenceFormat;        // 输出类引用字符格式串(以C开头)
+    private final DynamicCallManager DCManager = new DynamicCallManager();      //
+    private List<String> methodCalls = new ArrayList<>();                       // 存储类中的方法调用链
 
     public ClassVisitor(JavaClass jc) {
         clazz = jc;
@@ -58,22 +62,31 @@ public class ClassVisitor extends EmptyVisitor {
     }
 
     public void visitJavaClass(JavaClass jc) {
+        // 访问器模式，此处即是调用监听器的visitConstantPool方法,输出当前类引用的其他类
         jc.getConstantPool().accept(this);
+        // 获取到当前类中所有的方法，然后进行遍历获取当前类的方法引用的其他方法
         Method[] methods = jc.getMethods();
         for (int i = 0; i < methods.length; i++) {
             Method method = methods[i];
             DCManager.retrieveCalls(method, jc);
             DCManager.linkCalls(method);
+            // 访问器模式，此处是调用监听器的visitMethod方法，输出当前方法引用的其他方法
             method.accept(this);
 
         }
     }
 
     public void visitConstantPool(ConstantPool constantPool) {
+        // 遍历JavaClass的常量池
         for (int i = 0; i < constantPool.getLength(); i++) {
             Constant constant = constantPool.getConstant(i);
+            // 在解析常量池的时候 BCEL是用1开始插入的
             if (constant == null)
                 continue;
+            /**
+             * 过滤出表示类的常量池符号；即打印出当前类中引用的其他类
+             * 常量池的tag：https://hllvm-group.iteye.com/group/topic/38367 （RednaxelaFX）
+             */
             if (constant.getTag() == 7) {
                 String referencedClass = 
                     constantPool.constantToString(constant);
@@ -83,8 +96,11 @@ public class ClassVisitor extends EmptyVisitor {
     }
 
     public void visitMethod(Method method) {
+        // 将当前方法封装为一个动态方法类
         MethodGen mg = new MethodGen(method, clazz.getClassName(), constants);
+        // 构建自定义动态方法访问类
         MethodVisitor visitor = new MethodVisitor(mg, clazz);
+        // 将当前方法的所有调用关系集合添加到当前类的调用关系集合中
         methodCalls.addAll(visitor.start());
     }
 
