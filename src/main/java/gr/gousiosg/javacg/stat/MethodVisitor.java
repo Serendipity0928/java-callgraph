@@ -49,6 +49,7 @@ public class MethodVisitor extends EmptyVisitor {
     private ConstantPoolGen cp;     // 构建的动态常量池，和类的动态常量池相同
     private String format;          // 方法格式化字符串输出
     private List<String> methodCalls = new ArrayList<>();   // 当前方法调用其他方法集合
+    private String realArg4Constant;
 
     public MethodVisitor(MethodGen m, JavaClass jc) {
         visitedClass = jc;
@@ -120,4 +121,17 @@ public class MethodVisitor extends EmptyVisitor {
         methodCalls.add(String.format(format,"D",i.getType(cp),i.getMethodName(cp),
                 argumentList(i.getArgumentTypes(cp))));
     }
+
+    @Override
+    public void visitLDC(LDC ldc) {
+        /**
+         * ①：调用MCC配置时，会调用ConfigUtilAdapter的几个静态方法，即GetXXX()。可枚举方法名称
+         * ②：注意到，在业务调用方法时，需要注意有的GET方法可能只需要一个参数，有的需要两个，这就意味着需要多次ldc命令从常量池中获取字符串，注意能够区分出key值
+         * ③：静态方法对应字节码指令 static
+         * ④：todo: 接口多态、lambda、stream、多线程等可能会导致链路丢失
+         * 相关资料：https://www.cnblogs.com/tenghoo/p/jvm_opcodejvm.html、https://www.zhihu.com/question/296143618
+         */
+        realArg4Constant = ldc.getValue(cp).toString();
+    }
+
 }
