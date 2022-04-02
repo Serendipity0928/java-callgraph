@@ -44,7 +44,7 @@ import org.apache.bcel.classfile.ClassParser;
  *
  * @author Georgios Gousios <gousiosg@gmail.com>
  */
-public class JCallGraph {
+public class JCallBoot {
 
     public static void main(String[] args) {
 
@@ -87,36 +87,38 @@ public class JCallGraph {
                         ClassVisitor cv = getClassVisitor.apply(cp);
                         // 类访问器 开始初始化
                         cv.start();
-                        System.out.println(cv.methodCalls());
-
+//                        System.out.println(cv.methodCalls());
 
 
                     }
 
 
 
-                    String methodCalls = entries.
-                            flatMap(e -> {
-                                if (e.isDirectory() || !e.getName().endsWith(".class"))
-                                    return (new ArrayList<String>()).stream();
-
-                                ClassParser cp = new ClassParser(arg, e.getName());
-                                return getClassVisitor.apply(cp).start().methodCalls().stream();
-                            }).
-                            map(s -> s + "\n").
-                            reduce(new StringBuilder(),
-                                    StringBuilder::append,
-                                    StringBuilder::append).toString();
-
-                    BufferedWriter log = new BufferedWriter(new OutputStreamWriter(System.out));
-                    log.write(methodCalls);
-                    log.close();
+//                    String methodCalls = entries.
+//                            flatMap(e -> {
+//                                if (e.isDirectory() || !e.getName().endsWith(".class"))
+//                                    return (new ArrayList<String>()).stream();
+//
+//                                ClassParser cp = new ClassParser(arg, e.getName());
+//                                return getClassVisitor.apply(cp).start().methodCalls().stream();
+//                            }).
+//                            map(s -> s + "\n").
+//                            reduce(new StringBuilder(),
+//                                    StringBuilder::append,
+//                                    StringBuilder::append).toString();
+//
+//                    BufferedWriter log = new BufferedWriter(new OutputStreamWriter(System.out));
+//                    log.write(methodCalls);
+//                    log.close();
                 }
             }
         } catch (IOException e) {
             System.err.println("Error while processing jar: " + e.getMessage());
             e.printStackTrace();
         }
+
+        JMethodCallCore.test();
+
     }
 
     public static <T> Stream<T> enumerationAsStream(Enumeration<T> e) {

@@ -15,6 +15,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>19.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.bcel</groupId>
       <artifactId>bcel</artifactId>
       <version>6.2</version>
@@ -61,7 +66,7 @@
             <manifestEntries>
               <Can-Redefine-Classes>true</Can-Redefine-Classes>
               <Premain-Class>gr.gousiosg.javacg.dyn.Instrumenter</Premain-Class>
-              <Main-Class>gr.gousiosg.javacg.stat.JCallGraph</Main-Class>
+              <Main-Class>gr.gousiosg.javacg.stat.JCallBoot</Main-Class>
             </manifestEntries>
           </archive>
         </configuration>

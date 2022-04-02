@@ -31,9 +31,7 @@ package gr.gousiosg.javacg.stat;
 import org.apache.bcel.classfile.JavaClass;
 import org.apache.bcel.generic.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * The simplest of method visitors, prints any invoked method
@@ -42,21 +40,16 @@ import java.util.List;
  * 
  * Class copied with modifications from CJKM: http://www.spinellis.gr/sw/ckjm/
  */
-public class MethodVisitor extends EmptyVisitor {
+public class MethodVisitor extends JMethodCallCore {
 
-    JavaClass visitedClass;         // 当前类信息
-    private MethodGen mg;           // 构建的动态方法
-    private ConstantPoolGen cp;     // 构建的动态常量池，和类的动态常量池相同
-    private String format;          // 方法格式化字符串输出
-    private List<String> methodCalls = new ArrayList<>();   // 当前方法调用其他方法集合
-    private String realArg4Constant;
+    private final HashSet<String> mccConfigUtilMethod = new HashSet<String>(){{
+        add("getBoolean");add("getInt");add("getLong");add("getString");add("getStringArray");
+    }};
 
-    public MethodVisitor(MethodGen m, JavaClass jc) {
-        visitedClass = jc;
-        mg = m;
-        cp = mg.getConstantPool();
-        format = "M:" + visitedClass.getClassName() + ":" + mg.getName() + "(" + argumentList(mg.getArgumentTypes()) + ")"
-            + " " + "(%s)%s:%s(%s)";
+    private int ldcConsecutiveNum = 0;
+
+    public MethodVisitor(MethodGen methodGen, JavaClass visitedClass) {
+        super(methodGen, visitedClass);
     }
 
     /**
@@ -75,16 +68,24 @@ public class MethodVisitor extends EmptyVisitor {
 
     public List<String> start() {
         // 抽象方法或native方法没有方法体，直接返回空集合
-        if (mg.isAbstract() || mg.isNative())
+        if (methodGen.isAbstract() || methodGen.isNative())
             return Collections.emptyList();
 
-        for (InstructionHandle ih = mg.getInstructionList().getStart(); 
+//        String name = methodGen.getName();
+//        System.out.println(name);
+
+
+        for (InstructionHandle ih = methodGen.getInstructionList().getStart();
                 ih != null; ih = ih.getNext()) {
             Instruction i = ih.getInstruction();
 
             // 找到不属于InstructionConst || 属于ConstantPushInstruction || 属于ReturnInstruction的指令集
             if (!visitInstruction(i))
                 i.accept(this);
+
+            if(!(i instanceof LDC)) {
+                ldcConsecutiveNum = 0;
+            }
         }
         return methodCalls;
     }
@@ -97,29 +98,47 @@ public class MethodVisitor extends EmptyVisitor {
     }
 
     @Override
-    public void visitINVOKEVIRTUAL(INVOKEVIRTUAL i) {
-        methodCalls.add(String.format(format,"M",i.getReferenceType(cp),i.getMethodName(cp),argumentList(i.getArgumentTypes(cp))));
+    public void visitINVOKEVIRTUAL(INVOKEVIRTUAL invokevirtual) {
+        methodCalls.add(String.format(format,"M", invokevirtual.getReferenceType(constantPoolGen),
+                invokevirtual.getMethodName(constantPoolGen),argumentList(invokevirtual.getArgumentTypes(constantPoolGen))));
+        addMethodCallCache(invokevirtual);
     }
 
     @Override
-    public void visitINVOKEINTERFACE(INVOKEINTERFACE i) {
-        methodCalls.add(String.format(format,"I",i.getReferenceType(cp),i.getMethodName(cp),argumentList(i.getArgumentTypes(cp))));
+    public void visitINVOKEINTERFACE(INVOKEINTERFACE invokeinterface) {
+        methodCalls.add(String.format(format,"I", invokeinterface.getReferenceType(constantPoolGen),
+                invokeinterface.getMethodName(constantPoolGen),argumentList(invokeinterface.getArgumentTypes(constantPoolGen))));
+        addMethodCallCache(invokeinterface);
     }
 
     @Override
-    public void visitINVOKESPECIAL(INVOKESPECIAL i) {
-        methodCalls.add(String.format(format,"O",i.getReferenceType(cp),i.getMethodName(cp),argumentList(i.getArgumentTypes(cp))));
+    public void visitINVOKESPECIAL(INVOKESPECIAL invokespecial) {
+        methodCalls.add(String.format(format,"O", invokespecial.getReferenceType(constantPoolGen),
+                invokespecial.getMethodName(constantPoolGen),argumentList(invokespecial.getArgumentTypes(constantPoolGen))));
+        addMethodCallCache(invokespecial);
     }
 
     @Override
-    public void visitINVOKESTATIC(INVOKESTATIC i) {
-        methodCalls.add(String.format(format,"S",i.getReferenceType(cp),i.getMethodName(cp),argumentList(i.getArgumentTypes(cp))));
+    public void visitINVOKESTATIC(INVOKESTATIC invokestatic) {
+        String calleeClassName = invokestatic.getReferenceType(constantPoolGen).toString();
+        String methodName = invokestatic.getMethodName(constantPoolGen);
+        methodCalls.add(String.format(format,"S", calleeClassName, methodName,
+                argumentList(invokestatic.getArgumentTypes(constantPoolGen))));
+
+        addMethodCallCache(invokestatic);
+
+        // 检查是否为 com.sankuai.meituan.util.ConfigUtilAdapter.getXXX static方法
+        if(calleeClassName.equals("com.sankuai.meituan.util.ConfigUtilAdapter") && mccConfigUtilMethod.contains(methodName)) {
+            recordKeyAndMethodSignature(invokestatic, calleeClassName, methodName, ldcConsecutiveNum);
+        }
+
     }
 
     @Override
-    public void visitINVOKEDYNAMIC(INVOKEDYNAMIC i) {
-        methodCalls.add(String.format(format,"D",i.getType(cp),i.getMethodName(cp),
-                argumentList(i.getArgumentTypes(cp))));
+    public void visitINVOKEDYNAMIC(INVOKEDYNAMIC invokedynamic) {
+        methodCalls.add(String.format(format,"D", invokedynamic.getType(constantPoolGen),
+                invokedynamic.getMethodName(constantPoolGen), argumentList(invokedynamic.getArgumentTypes(constantPoolGen))));
+        addMethodCallCache(invokedynamic);
     }
 
     @Override
@@ -131,7 +150,15 @@ public class MethodVisitor extends EmptyVisitor {
          * ④：todo: 接口多态、lambda、stream、多线程等可能会导致链路丢失
          * 相关资料：https://www.cnblogs.com/tenghoo/p/jvm_opcodejvm.html、https://www.zhihu.com/question/296143618
          */
-        realArg4Constant = ldc.getValue(cp).toString();
+
+        if(ldc.getType(constantPoolGen) == Type.STRING) {
+            updateKeyCandidateLDC(ldc.getValue(constantPoolGen).toString());
+            ldcConsecutiveNum++;
+            return;
+        }
+        ldcConsecutiveNum = 0;
     }
+
+
 
 }

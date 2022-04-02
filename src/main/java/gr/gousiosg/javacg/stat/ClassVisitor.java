@@ -37,6 +37,7 @@ import org.apache.bcel.generic.ConstantPoolGen;
 import org.apache.bcel.generic.MethodGen;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -65,6 +66,7 @@ public class ClassVisitor extends EmptyVisitor {
         // 访问器模式，此处即是调用监听器的visitConstantPool方法,输出当前类引用的其他类
         jc.getConstantPool().accept(this);
         // 获取到当前类中所有的方法，然后进行遍历获取当前类的方法引用的其他方法
+        // TODO: 2022/4/2 如何确保先遍历类构造器<clint>或实例构造器<init>字节码
         Method[] methods = jc.getMethods();
         for (int i = 0; i < methods.length; i++) {
             Method method = methods[i];
@@ -90,7 +92,7 @@ public class ClassVisitor extends EmptyVisitor {
             if (constant.getTag() == 7) {
                 String referencedClass = 
                     constantPool.constantToString(constant);
-                System.out.println(String.format(classReferenceFormat, referencedClass));
+//                System.out.println(String.format(classReferenceFormat, referencedClass));
             }
         }
     }
