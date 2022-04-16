@@ -117,7 +117,7 @@ public class JCallBoot {
             e.printStackTrace();
         }
 
-        JMethodCallCore.test();
+//        JMethodCallCore.test();
 
     }
 

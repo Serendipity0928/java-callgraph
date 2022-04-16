@@ -62,12 +62,9 @@ public class DynamicCallManager {
     private final Map<String, String> dynamicCallers = new HashMap<>();
 
     /**
-     * Retrieve dynamic call relationships based on the code of the provided
-     * {@link Method}.
-     *
-     * @param method {@link Method} to analyze the code
-     * @param jc     {@link JavaClass} info, which contains the bootstrap methods
-     * @see #linkCalls(Method)
+     * 基于提供的类信息&方法信息获取动态调用关系
+     * @param method {@link Method} 分析字节码
+     * @param jc     {@link JavaClass} 需要类的属性信息，其中包含bootstrapMethods
      */
     public void retrieveCalls(Method method, JavaClass jc) {
         if (method.isAbstract() || method.isNative()) {
@@ -75,23 +72,23 @@ public class DynamicCallManager {
             return;
         }
         ConstantPool cp = method.getConstantPool();
-        BootstrapMethod[] boots = getBootstrapMethods(jc);
+        BootstrapMethod[] boots = getBootstrapMethods(jc);          // 获取引导犯法
         String code = method.getCode().toString();
-        Matcher matcher = BOOTSTRAP_CALL_PATTERN.matcher(code);
+        Matcher matcher = BOOTSTRAP_CALL_PATTERN.matcher(code);     // 根据正则表达式进行匹配
         while (matcher.find()) {
-            int bootIndex = Integer.parseInt(matcher.group(1));
+            int bootIndex = Integer.parseInt(matcher.group(1));         // 获取匹配到的第一个括号中的内容【0指整个串】
             BootstrapMethod bootMethod = boots[bootIndex];
-            int calledIndex = bootMethod.getBootstrapArguments()[CALL_HANDLE_INDEX_ARGUMENT];
+            int calledIndex = bootMethod.getBootstrapArguments()[CALL_HANDLE_INDEX_ARGUMENT];     // 中间这个参数指向常量池中MethodHandle_info
             String calledName = getMethodNameFromHandleIndex(cp, calledIndex);
             String callerName = method.getName();
-            dynamicCallers.put(calledName, callerName);
+            dynamicCallers.put(calledName, callerName);     // 将lambda的方法发是calledName
         }
     }
 
     private String getMethodNameFromHandleIndex(ConstantPool cp, int callIndex) {
-        ConstantMethodHandle handle = (ConstantMethodHandle) cp.getConstant(callIndex);
-        ConstantCP ref = (ConstantCP) cp.getConstant(handle.getReferenceIndex());
-        ConstantNameAndType nameAndType = (ConstantNameAndType) cp.getConstant(ref.getNameAndTypeIndex());
+        ConstantMethodHandle handle = (ConstantMethodHandle) cp.getConstant(callIndex);     // ConstantMethodHandle 一定是这个类型
+        ConstantCP ref = (ConstantCP) cp.getConstant(handle.getReferenceIndex());           // ConstantMethodHandle 指向 Methodref_info
+        ConstantNameAndType nameAndType = (ConstantNameAndType) cp.getConstant(ref.getNameAndTypeIndex());  // Methodref_info 一定指向 NameAndType
         return nameAndType.getName(cp);
     }
 
@@ -114,6 +111,10 @@ public class DynamicCallManager {
         cp.setConstant(nameIndex, new ConstantUtf8(linkedName));
     }
 
+    /**
+     * 通过类的属性信息获取bootstrapMethods
+     * @return
+     */
     private BootstrapMethod[] getBootstrapMethods(JavaClass jc) {
         /**
          * 获取类文件属性的invokedynamic指令引用引导方法限定符。

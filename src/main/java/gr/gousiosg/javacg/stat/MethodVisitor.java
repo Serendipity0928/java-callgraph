@@ -42,11 +42,11 @@ import java.util.*;
  */
 public class MethodVisitor extends JMethodCallCore {
 
+    private int ldcConsecutiveNum = 0;
     private final HashSet<String> mccConfigUtilMethod = new HashSet<String>(){{
         add("getBoolean");add("getInt");add("getLong");add("getString");add("getStringArray");
     }};
 
-    private int ldcConsecutiveNum = 0;
 
     public MethodVisitor(MethodGen methodGen, JavaClass visitedClass) {
         super(methodGen, visitedClass);
